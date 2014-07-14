@@ -1,20 +1,60 @@
-﻿Build started 02/07/2014 3:54:49 PM.
+﻿Build started 11/07/2014 9:30:27 AM.
      1>Project "C:\Users\Louis\documents\visual studio 2010\Projects\Interface_Control_Grue\Interface_Control_Grue\Interface_Control_Grue.vcxproj" on node 2 (build target(s)).
      1>InitializeBuildStatus:
          Creating "Debug\Interface_Control_Grue.unsuccessfulbuild" because "AlwaysCreate" was specified.
        ClCompile:
          All outputs are up-to-date.
-         C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _WINDOWS /D _DEBUG /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MTd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yu"StdAfx.h" /Fp"Debug\Interface_Control_Grue.pch" /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt Parametres.cpp
-         Parametres.cpp
+         C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _WINDOWS /D _DEBUG /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MTd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yu"StdAfx.h" /Fp"Debug\Interface_Control_Grue.pch" /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt Interface_Control_Grue.cpp Interface_Control_GrueDlg.cpp Parametres.cpp
+         Interface_Control_GrueDlg.cpp
      1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\craneexports.h(140): warning C4251: 'Crane::cs' : class 'CCriticalSection' needs to have dll-interface to be used by clients of class 'Crane'
                  c:\program files (x86)\microsoft visual studio 10.0\vc\atlmfc\include\afxmt.h(151) : see declaration of 'CCriticalSection'
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(998): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1014): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1019): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1036): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1041): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1058): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1063): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1076): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1088): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1100): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1112): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1128): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1133): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1150): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1155): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1172): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1177): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1190): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1202): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1214): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1237): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1242): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1259): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1264): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1281): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1286): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1299): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1311): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1323): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1436): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1448): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1460): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1571): warning C4244: 'argument' : conversion from 'float' to 'int', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1646): warning C4244: 'argument' : conversion from 'int' to 'float', possible loss of data
+     1>c:\users\louis\documents\visual studio 2010\projects\interface_control_grue\interface_control_grue\interface_control_gruedlg.cpp(1669): warning C4244: 'return' : conversion from 'double' to 'float', possible loss of data
+         Generating Code...
+         Skipping... (no relevant changes detected)
+         Parametres.cpp
+         Interface_Control_Grue.cpp
        ResourceCompile:
-         All outputs are up-to-date.
+         C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\bin\rc.exe /D _DEBUG /D _UNICODE /D UNICODE /l"0x0409" /IDebug\ /nologo /fo"Debug\Interface_Control_Grue.res" Interface_Control_Grue.rc 
        ManifestResourceCompile:
          All outputs are up-to-date.
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Louis\documents\visual studio 2010\Projects\Interface_Control_Grue\Debug\Interface_Control_Grue.exe" /INCREMENTAL /NOLOGO /MANIFEST /ManifestFile:"Debug\Interface_Control_Grue.exe.intermediate.manifest" /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /DEBUG /PDB:"C:\Users\Louis\documents\visual studio 2010\Projects\Interface_Control_Grue\Debug\Interface_Control_Grue.pdb" /SUBSYSTEM:WINDOWS /TLBID:1 /ENTRY:"wWinMainCRTStartup" /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Louis\documents\visual studio 2010\Projects\Interface_Control_Grue\Debug\Interface_Control_Grue.lib" /MACHINE:X86 Debug\Interface_Control_Grue.res
          Debug\Interface_Control_Grue.exe.embed.manifest.res
+         Debug\CFileINI.obj
          Debug\Interface_Control_Grue.obj
          Debug\Interface_Control_GrueDlg.obj
          Debug\Parametres.obj
@@ -35,4 +75,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:03.05
+Time Elapsed 00:00:03.12

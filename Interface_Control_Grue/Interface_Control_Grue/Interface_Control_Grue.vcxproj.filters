@@ -25,6 +25,21 @@
     <None Include="res\ribbon1.mfcribbon-ms">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="..\..\..\..\Stop.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\..\..\..\Stop.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\..\..\..\Stop2.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\Stop.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\Stop2.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Interface_Control_Grue.h">
@@ -57,6 +72,9 @@
     <ClInclude Include="Parametres.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CFileINI.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Interface_Control_Grue.cpp">
@@ -72,6 +90,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Parametres.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CFileINI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

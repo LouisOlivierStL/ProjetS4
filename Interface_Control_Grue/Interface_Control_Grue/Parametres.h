@@ -14,6 +14,10 @@ private:
 	float m_ka;
 	float m_kb;
 
+	int m_xbeta_type;
+	int m_yalpha_type;
+	int m_r_type;
+
 	float m_xbeta_kp;
 	float m_xbeta_kd;
 	float m_xbeta_ki;
@@ -60,6 +64,8 @@ private:
 	float m_trajY;
 	float m_trajZ;
 
+	int m_trajMode;
+
 	CString m_trajPath;
 
 	//Structure contenant les donnees des compensateurs
@@ -72,6 +78,9 @@ private:
 
 	//Classe crane pour le control de la grue
 	Crane *m_crane;
+	bool m_craneWait; //Booleen qui empeche de faire des requetes de mouvements lorsque la grue est en mouvement
+	int m_waitMode;
+	bool m_afficherInterf;
 
 public:
 	Parametres(CInterface_Control_Grue_Dlg* parent);
@@ -85,8 +94,11 @@ public:
 	float GetKb();
 
 	void SetXbetaType(int type);
+	int GetXbetaType();
 	void SetYalphaType(int type);
+	int GetYalphaType();
 	void SetRType(int type);
+	int GetRType();
 
 	void SetXbetaKp(float kp);
 	float GetXbetaKp();
@@ -173,12 +185,30 @@ public:
 	void SetTrajZ(float trajZ);
 	float GetTrajZ();
 
+	void SetTrajMode(int trajMode);
+	int GetTrajMode();
+
 	void SetTrajPath(CString trajPath);
 	CString GetTrajPath();
 
-	//Structure contenant les donnees des compensateurs
+	//Fonction en rapport avec la grue
 	void InitCraneComp();
 	void UpdateCraneComp();
+	void UpdateCraneTrajMode();
+	void UpdateCraneTrajPath();
+
+	void SetCraneWait(bool wait);
+	bool GetCraneWait();
+
+	void Run(int mode, int traj_flag);
+	void Reset();
+	void Stop();
+	void Wait(int mode, bool affInterf);
+	static UINT WaitCraneThread(LPVOID obj);
+
+	bool GetAffInterf();
+
+	int GetWaitMode();
 
 	//Variable de calcul
 	void SetCalcul(bool calcul);

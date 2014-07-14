@@ -24,11 +24,13 @@
 //Msg variable
 #define ERR_WORKER_THREAD WM_USER+400
 #define POST_CAPTEURS_VALUES WM_USER+401
+#define CRANE_WAIT_DONE WM_USER+402
 
 static UINT BASED_CODE g_sIndicators[SIZEOF_INDICATORS] = { ID_INDICATOR_TIME, ID_INDICATOR_LOG };
 
 class Parametres;
 class CParametres_Dlg;
+class CFileINI;
 
 // CInterface_Control_Grue_Dlg dialog
 class CInterface_Control_Grue_Dlg : public CDialogEx
@@ -56,6 +58,8 @@ private:
 	CParametres_Dlg *m_pDLG_Parametres;
 	Parametres *m_param;
 
+	CFileINI* m_iniFile;
+
 	//Capteurs_Thread *m_capThread;
 
 // Implementation
@@ -80,6 +84,7 @@ public:
 	afx_msg void OnCbnSelchangeComboR();
 	CComboBox m_comboYalpha;
 	CComboBox m_comboR;
+	CComboBox m_comboTraj;
 	afx_msg void OnTcnSelchangeTabParametres(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnEnSetfocusEditXbetaParam1();
 	afx_msg void OnEnSetfocusEditXbetaParam2();
@@ -136,6 +141,7 @@ public:
 	//Fonction message user
 	afx_msg LRESULT OnErrWorkerThread(WPARAM, LPARAM);
 	afx_msg LRESULT OnPostCapteursValues(WPARAM, LPARAM);
+	afx_msg LRESULT OnCraneWaitDone(WPARAM, LPARAM);
 
 	void OnTimer(UINT_PTR p_pTimer);	//Fonction qui est appelee a chaque fois qu'un timer se termine
 	void StartTimer(UINT_PTR p_uiIdEvent, DWORD p_dwTime); //Commence un timer
@@ -156,9 +162,26 @@ public:
 
 	void Traj_Live_Enabled(bool enabled);
 	void Traj_Disabled(bool disabled);
+	void Comp_Disabled(bool disabled);
 
 	//Fonction permettant d'ecrire un msg dans la barre de statut
 	void Msg_Status(CString msg);
+	afx_msg void OnCbnSelchangeComboTrajMode();
+
+	void LoadINI();
+	void ShowAllParam();
+	void ShowXbetaParam();
+	void ShowYalphaParam();
+	void ShowR_Param();
+	void SaveINI();
+	bool INIExists();
+	CString floatToString(float f);
+	float CharToFloat(char* c);
+	afx_msg void OnBnClickedButtonSauvegarder();
+	CBitmap bmpStop;
+	CBitmap bmpStopEnfonce;
+	CStatic m_buttonStop;
+	afx_msg void OnBnClickedButtonRestaurer();
 };
 
 //UINT test(LPVOID pParam);
