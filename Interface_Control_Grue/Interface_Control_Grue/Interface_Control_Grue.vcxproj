@@ -94,12 +94,18 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include="..\..\..\..\Stop.bmp" />
+    <None Include="..\..\..\..\Stop.png" />
+    <None Include="..\..\..\..\Stop2.bmp" />
     <None Include="ReadMe.txt" />
     <None Include="res\Interface_Control_Grue.ico" />
     <None Include="res\Interface_Control_Grue.rc2" />
     <None Include="res\ribbon1.mfcribbon-ms" />
+    <None Include="res\Stop.bmp" />
+    <None Include="res\Stop2.bmp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CFileINI.h" />
     <ClInclude Include="crane.h" />
     <ClInclude Include="craneexports.h" />
     <ClInclude Include="Interface_Control_Grue.h" />
@@ -112,6 +118,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CFileINI.cpp" />
     <ClCompile Include="Interface_Control_Grue.cpp" />
     <ClCompile Include="Interface_Control_GrueDlg.cpp" />
     <ClCompile Include="Parametres.cpp" />

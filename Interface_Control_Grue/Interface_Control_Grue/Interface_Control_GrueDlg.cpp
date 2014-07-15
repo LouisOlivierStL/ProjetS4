@@ -9,6 +9,7 @@
 #include <math.h>
 #include "ParametresDlg.h"
 #include "Parametres.h"
+#include "CFileINI.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -65,6 +66,8 @@ void CInterface_Control_Grue_Dlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_COMBO_XBETA, m_comboXbeta);
 	DDX_Control(pDX, IDC_COMBO_YALPHA, m_comboYalpha);
 	DDX_Control(pDX, IDC_COMBO_R, m_comboR);
+	DDX_Control(pDX, IDC_COMBO_TRAJ_MODE, m_comboTraj);
+	DDX_Control(pDX, IDC_BUTTON_STOP, m_buttonStop);
 }
 
 BEGIN_MESSAGE_MAP(CInterface_Control_Grue_Dlg, CDialogEx)
@@ -74,6 +77,7 @@ BEGIN_MESSAGE_MAP(CInterface_Control_Grue_Dlg, CDialogEx)
 	ON_WM_TIMER() // to use timers
 	ON_MESSAGE(ERR_WORKER_THREAD, &CInterface_Control_Grue_Dlg::OnErrWorkerThread)
 	ON_MESSAGE(POST_CAPTEURS_VALUES, &CInterface_Control_Grue_Dlg::OnPostCapteursValues)
+	ON_MESSAGE(CRANE_WAIT_DONE, &CInterface_Control_Grue_Dlg::OnCraneWaitDone)
 	ON_STN_CLICKED(IDC_BUTTON_STOP, &CInterface_Control_Grue_Dlg::On_ButtonArret_Clicked)
 	ON_BN_CLICKED(IDC_BUTTON_START, &CInterface_Control_Grue_Dlg::OnBnClickedButtonStart)
 	ON_BN_CLICKED(IDC_BUTTON_RESET, &CInterface_Control_Grue_Dlg::OnBnClickedButtonReset)
@@ -133,6 +137,9 @@ BEGIN_MESSAGE_MAP(CInterface_Control_Grue_Dlg, CDialogEx)
 	ON_EN_KILLFOCUS(IDC_EDIT_TRAJ_Y, &CInterface_Control_Grue_Dlg::OnEnKillfocusEditTrajY)
 	ON_EN_KILLFOCUS(IDC_EDIT_TRAJ_Z, &CInterface_Control_Grue_Dlg::OnEnKillfocusEditTrajZ)
 	ON_BN_CLICKED(IDC_BUTTON_PARCOURIR, &CInterface_Control_Grue_Dlg::OnBnClickedButtonParcourir)
+	ON_CBN_SELCHANGE(IDC_COMBO_TRAJ_MODE, &CInterface_Control_Grue_Dlg::OnCbnSelchangeComboTrajMode)
+	ON_BN_CLICKED(IDC_BUTTON_SAUVEGARDER, &CInterface_Control_Grue_Dlg::OnBnClickedButtonSauvegarder)
+	ON_BN_CLICKED(IDC_BUTTON_RESTAURER, &CInterface_Control_Grue_Dlg::OnBnClickedButtonRestaurer)
 END_MESSAGE_MAP()
 
 
@@ -207,9 +214,30 @@ BOOL CInterface_Control_Grue_Dlg::OnInitDialog()
 
 	m_comboR.SetCurSel(0);
 
+	//Combo traj init
+	m_comboTraj.InsertString(0, _T("Arret"));
+	m_comboTraj.InsertString(1, _T("Boucle"));
+	m_comboTraj.InsertString(2, _T("Maintient"));
+
+	m_comboTraj.SetCurSel(0);
+
 	//Trajectoire init
 	((CButton*)GetDlgItem(IDC_RADIO_TRAJ_LIVE))->SetCheck(true);
 	Traj_Live_Enabled(true);
+
+	//On regarde si le fichier .ini existe
+	m_iniFile = new CFileINI(NULL);
+
+	if(INIExists())
+	{
+		LoadINI();
+		ShowAllParam();
+	}
+
+	//On load les images pour le bouton stop
+	bmpStop.LoadBitmapW(IDB_BITMAP_STOP1);
+	bmpStopEnfonce.LoadBitmapW(IDB_BITMAP_STOP2);
+	m_buttonStop.SetBitmap(bmpStop);
 
 	// Set the icon for this dialog.  The framework does this automatically
 	//  when the application's main window is not a dialog
@@ -347,10 +375,26 @@ void CInterface_Control_Grue_Dlg::StopTimer(UINT_PTR p_uiIdEvent)
 
 void CInterface_Control_Grue_Dlg::On_ButtonArret_Clicked()
 {
-	GetDlgItem(IDC_BUTTON_STOP)->ModifyStyleEx(0, WS_EX_CLIENTEDGE, SWP_FRAMECHANGED);
 	Stop();
-	Sleep(200);
-	GetDlgItem(IDC_BUTTON_STOP)->ModifyStyleEx(WS_EX_CLIENTEDGE, 0, SWP_FRAMECHANGED);
+
+	if(m_buttonStop.GetBitmap() == bmpStop)
+	{
+		m_buttonStop.SetBitmap(bmpStopEnfonce);
+		//m_param->Stop();
+		GetDlgItem(IDC_BUTTON_RESET)->EnableWindow(false);
+		GetDlgItem(IDC_BUTTON_START)->EnableWindow(false);
+	}
+
+	else if(m_buttonStop.GetBitmap() == bmpStopEnfonce)
+	{
+		m_buttonStop.SetBitmap(bmpStop);
+
+		m_param->Reset();
+		m_param->Wait(STOP, true);
+
+		GetDlgItem(IDC_BUTTON_RESET)->EnableWindow(true);
+		GetDlgItem(IDC_BUTTON_START)->EnableWindow(true);
+	}
 }
 
 void CInterface_Control_Grue_Dlg::OnBnClickedButtonStart()
@@ -361,7 +405,8 @@ void CInterface_Control_Grue_Dlg::OnBnClickedButtonStart()
 
 void CInterface_Control_Grue_Dlg::OnBnClickedButtonReset()
 {
-
+	m_param->Reset();
+	m_param->Wait(STOP, true);
 }
 
 void CInterface_Control_Grue_Dlg::OnModifierClicked()
@@ -384,56 +429,27 @@ void CInterface_Control_Grue_Dlg::OnModifierClicked()
 
 void CInterface_Control_Grue_Dlg::Start()
 {
+	m_param->UpdateCraneComp();
+	m_param->Reset();
+	m_param->Wait(STOP, false);
+	m_param->UpdateCraneTrajPath();
+	m_param->UpdateCraneTrajMode();
+
+	//On commence a recolter les valeurs des capteurs
 	m_param->SetCalcul(true);
 	AfxBeginThread(Calcul_Grue, m_param);
-	m_param->UpdateCraneComp();
+
 	Traj_Disabled(true);
+	Comp_Disabled(true);
 
 	//Debut du deplacement de la grue
-	/*int err = m_param->GetCrane()->Run(CLOSE, RESTART);
-
-	if(err == 0)
-	{
-		Msg_Status(_T("Grue en déplacement."));
-	}
-
-	else if(err == ERR_CTL_MODE)
-	{
-		Msg_Status(_T("Le paramètre ctlMode est non valide."));
-	}
-
-	else if(err == ERR_RUNNING)
-	{
-		Msg_Status(_T("La grue est déjà en train d’exécuter un déplacement."));
-	}
-
-	else if(err == ERR_TRAJ)
-	{
-		Msg_Status(_T("La trajectoire n’est pas spécifiée ou est non valide."));
-	}
-
-	else if(err == ERR_TRAJ_FLAG)
-	{
-		Msg_Status(_T("Le paramètre trajFlag est non valide."));
-	}
-
-	else if(err == ERR_WRITE_DSP)
-	{
-		Msg_Status(_T("L’envoi de données au DSP a échoué."));
-	}*/
+	//m_param->Run(CLOSE, RESTART);
+	//m_param->Wait(STOP, false);
 }
 
 void CInterface_Control_Grue_Dlg::Stop()
 {
-	/*int err = m_param->GetCrane()->Stop();
-
-	if(err == ERR_READ_DSP)
-	{
-		Msg_Status(_T("La réception de données du DSP a échouée."));
-	}*/
-
-	m_param->SetCalcul(false);
-	Traj_Disabled(false);
+	
 }
 
 UINT CInterface_Control_Grue_Dlg::Calcul_Grue(LPVOID obj)
@@ -485,6 +501,7 @@ UINT CInterface_Control_Grue_Dlg::Calcul_Grue(LPVOID obj)
 
 			param->SetWait(true);
 			::PostMessageA(param->GetDialog()->m_hWnd, POST_CAPTEURS_VALUES, 0, 0);
+			Sleep(500);
 		}
 	}
 	return 0;
@@ -505,6 +522,8 @@ void CInterface_Control_Grue_Dlg::OnCbnSelchangeComboXbeta()
 		Xbeta_PID_Visible(false);
 		m_param->SetXbetaType(TF);
 	}
+
+	ShowXbetaParam();
 }
 
 void CInterface_Control_Grue_Dlg::Compensateurs_Visible(bool visible)
@@ -562,6 +581,9 @@ void CInterface_Control_Grue_Dlg::Compensateurs_Visible(bool visible)
 		GetDlgItem(IDC_EDIT_YALPHA_PARAM1)->ShowWindow(SW_SHOW);
 		GetDlgItem(IDC_EDIT_R_PARAM1)->ShowWindow(SW_SHOW);
 
+
+		GetDlgItem(IDC_STATIC_TRAJ_MODE)->ShowWindow(SW_HIDE);
+		GetDlgItem(IDC_COMBO_TRAJ_MODE)->ShowWindow(SW_HIDE);
 		GetDlgItem(IDC_STATIC_TRAJECTOIRE)->ShowWindow(SW_HIDE);
 		GetDlgItem(IDC_RADIO_TRAJ_LIVE)->ShowWindow(SW_HIDE);
 		GetDlgItem(IDC_STATIC_TRAJ_X)->ShowWindow(SW_HIDE);
@@ -632,6 +654,8 @@ void CInterface_Control_Grue_Dlg::Compensateurs_Visible(bool visible)
 		GetDlgItem(IDC_EDIT_YALPHA_PARAM1)->ShowWindow(SW_HIDE);
 		GetDlgItem(IDC_EDIT_R_PARAM1)->ShowWindow(SW_HIDE);
 
+		GetDlgItem(IDC_STATIC_TRAJ_MODE)->ShowWindow(SW_SHOW);
+		GetDlgItem(IDC_COMBO_TRAJ_MODE)->ShowWindow(SW_SHOW);
 		GetDlgItem(IDC_STATIC_TRAJECTOIRE)->ShowWindow(SW_SHOW);
 		GetDlgItem(IDC_RADIO_TRAJ_LIVE)->ShowWindow(SW_SHOW);
 		GetDlgItem(IDC_STATIC_TRAJ_X)->ShowWindow(SW_SHOW);
@@ -796,6 +820,8 @@ void CInterface_Control_Grue_Dlg::OnCbnSelchangeComboYalpha()
 		Yalpha_PID_Visible(false);
 		m_param->SetYalphaType(TF);
 	}
+
+	ShowYalphaParam();
 }
 
 
@@ -814,6 +840,8 @@ void CInterface_Control_Grue_Dlg::OnCbnSelchangeComboR()
 		R_PID_Visible(false);
 		m_param->SetRType(TF);
 	}
+
+	ShowR_Param();
 }
 
 
@@ -1329,6 +1357,9 @@ void CInterface_Control_Grue_Dlg::Traj_Disabled(bool disabled)
 {
 	if(disabled)
 	{
+		GetDlgItem(IDC_STATIC_TRAJ_MODE)->EnableWindow(false);
+		GetDlgItem(IDC_COMBO_TRAJ_MODE)->EnableWindow(false);
+
 		GetDlgItem(IDC_RADIO_TRAJ_LIVE)->EnableWindow(false);
 		GetDlgItem(IDC_RADIO_TRAJ_PREDEF)->EnableWindow(false);
 
@@ -1345,6 +1376,9 @@ void CInterface_Control_Grue_Dlg::Traj_Disabled(bool disabled)
 
 	else
 	{
+		GetDlgItem(IDC_STATIC_TRAJ_MODE)->EnableWindow(true);
+		GetDlgItem(IDC_COMBO_TRAJ_MODE)->EnableWindow(true);
+
 		GetDlgItem(IDC_RADIO_TRAJ_LIVE)->EnableWindow(true);
 		GetDlgItem(IDC_RADIO_TRAJ_PREDEF)->EnableWindow(true);
 
@@ -1442,4 +1476,503 @@ void CInterface_Control_Grue_Dlg::OnBnClickedButtonParcourir()
 void CInterface_Control_Grue_Dlg::Msg_Status(CString msg)
 {
 	m_STB_StatusBar.SetPaneText(m_STB_StatusBar.CommandToIndex(ID_INDICATOR_LOG), (LPCTSTR)msg);
+}
+
+void CInterface_Control_Grue_Dlg::OnCbnSelchangeComboTrajMode()
+{
+	int sel = m_comboTraj.GetCurSel();
+
+	if(sel == 0)
+	{
+		m_param->SetTrajMode(STOP);
+	}
+
+	else if(sel == 1)
+	{
+		m_param->SetTrajMode(LOOP);
+	}
+
+	else if(sel == 2)
+	{
+		m_param->SetTrajMode(HOLD);
+	}
+}
+
+void CInterface_Control_Grue_Dlg::LoadINI()
+{
+	//xbeta
+	m_param->SetKb(CharToFloat(m_iniFile->ReadString("xbeta", "kb")));
+
+	if(m_iniFile->ReadString("xbeta", "mode") == "PID")
+	{
+		m_param->SetXbetaType(PID);
+	}
+
+	else
+	{
+		m_param->SetXbetaType(TF);
+	}
+	
+	m_param->SetXbetaKp(CharToFloat(m_iniFile->ReadString("xbeta", "kp")));
+	m_param->SetXbetaKd(CharToFloat(m_iniFile->ReadString("xbeta", "kd")));
+	m_param->SetXbetaKi(CharToFloat(m_iniFile->ReadString("xbeta", "ki")));
+	m_param->SetXbetaA0(CharToFloat(m_iniFile->ReadString("xbeta", "a0")));
+	m_param->SetXbetaA1(CharToFloat(m_iniFile->ReadString("xbeta", "a1")));
+	m_param->SetXbetaA2(CharToFloat(m_iniFile->ReadString("xbeta", "a2")));
+	m_param->SetXbetaB0(CharToFloat(m_iniFile->ReadString("xbeta", "b0")));
+	m_param->SetXbetaB1(CharToFloat(m_iniFile->ReadString("xbeta", "b1")));
+	m_param->SetXbetaB2(CharToFloat(m_iniFile->ReadString("xbeta", "b2")));
+
+	//yalpha
+	m_param->SetKa(CharToFloat(m_iniFile->ReadString("yalpha", "ka")));
+
+	if(m_iniFile->ReadString("yalpha", "mode") == "PID")
+	{
+		m_param->SetYalphaType(PID);
+	}
+
+	else
+	{
+		m_param->SetYalphaType(TF);
+	}
+	
+	m_param->SetYalphaKp(CharToFloat(m_iniFile->ReadString("yalpha", "kp")));
+	m_param->SetYalphaKd(CharToFloat(m_iniFile->ReadString("yalpha", "kd")));
+	m_param->SetYalphaKi(CharToFloat(m_iniFile->ReadString("yalpha", "ki")));
+	m_param->SetYalphaA0(CharToFloat(m_iniFile->ReadString("yalpha", "a0")));
+	m_param->SetYalphaA1(CharToFloat(m_iniFile->ReadString("yalpha", "a1")));
+	m_param->SetYalphaA2(CharToFloat(m_iniFile->ReadString("yalpha", "a2")));
+	m_param->SetYalphaB0(CharToFloat(m_iniFile->ReadString("yalpha", "b0")));
+	m_param->SetYalphaB1(CharToFloat(m_iniFile->ReadString("yalpha", "b1")));
+	m_param->SetYalphaB2(CharToFloat(m_iniFile->ReadString("yalpha", "b2")));
+
+	//R
+	if(m_iniFile->ReadString("r", "mode") == "PID")
+	{
+		m_param->SetRType(PID);
+	}
+
+	else
+	{
+		m_param->SetRType(TF);
+	}
+	
+	m_param->SetR_Kp(CharToFloat(m_iniFile->ReadString("r", "kp")));
+	m_param->SetR_Kd(CharToFloat(m_iniFile->ReadString("r", "kd")));
+	m_param->SetR_Ki(CharToFloat(m_iniFile->ReadString("r", "ki")));
+	m_param->SetR_A0(CharToFloat(m_iniFile->ReadString("r", "a0")));
+	m_param->SetR_A1(CharToFloat(m_iniFile->ReadString("r", "a1")));
+	m_param->SetR_A2(CharToFloat(m_iniFile->ReadString("r", "a2")));
+	m_param->SetR_B0(CharToFloat(m_iniFile->ReadString("r", "b0")));
+	m_param->SetR_B1(CharToFloat(m_iniFile->ReadString("r", "b1")));
+	m_param->SetR_B2(CharToFloat(m_iniFile->ReadString("r", "b2")));
+
+	//Trajectoire
+	m_param->SetTrajMode(CharToFloat(m_iniFile->ReadString("trajectoire", "mode")));
+	m_strTmp = m_iniFile->ReadString("trajectoire", "path");
+	m_param->SetTrajPath(m_strTmp);
+}
+
+void CInterface_Control_Grue_Dlg::SaveINI()
+{
+	//xbeta
+	m_iniFile->WriteString("xbeta", "kb", CT2CA(floatToString(m_param->GetKb())));
+
+	if(m_param->GetXbetaType() == PID)
+	{
+		m_iniFile->WriteString("xbeta", "mode", "PID");
+	}
+
+	else
+	{
+		m_iniFile->WriteString("xbeta", "mode", "TF");
+	}
+	
+	m_iniFile->WriteString("xbeta", "kp", CT2CA(floatToString(m_param->GetXbetaKp())));
+	m_iniFile->WriteString("xbeta", "kd", CT2CA(floatToString(m_param->GetXbetaKd())));
+	m_iniFile->WriteString("xbeta", "ki", CT2CA(floatToString(m_param->GetXbetaKi())));
+	m_iniFile->WriteString("xbeta", "a0", CT2CA(floatToString(m_param->GetXbetaA0())));
+	m_iniFile->WriteString("xbeta", "a1", CT2CA(floatToString(m_param->GetXbetaA1())));
+	m_iniFile->WriteString("xbeta", "a2", CT2CA(floatToString(m_param->GetXbetaA2())));
+	m_iniFile->WriteString("xbeta", "b0", CT2CA(floatToString(m_param->GetXbetaB0())));
+	m_iniFile->WriteString("xbeta", "b1", CT2CA(floatToString(m_param->GetXbetaB1())));
+	m_iniFile->WriteString("xbeta", "b2", CT2CA(floatToString(m_param->GetXbetaB2())));
+
+	//yalpha
+	m_iniFile->WriteString("yalpha", "ka", CT2CA(floatToString(m_param->GetKa())));
+
+	if(m_param->GetYalphaType() == PID)
+	{
+		m_iniFile->WriteString("yalpha", "mode", "PID");
+	}
+
+	else
+	{
+		m_iniFile->WriteString("yalpha", "mode", "TF");
+	}
+
+	m_iniFile->WriteString("yalpha", "kp", CT2CA(floatToString(m_param->GetYalphaKp())));
+	m_iniFile->WriteString("yalpha", "kd", CT2CA(floatToString(m_param->GetYalphaKd())));
+	m_iniFile->WriteString("yalpha", "ki", CT2CA(floatToString(m_param->GetYalphaKi())));
+	m_iniFile->WriteString("yalpha", "a0", CT2CA(floatToString(m_param->GetYalphaA0())));
+	m_iniFile->WriteString("yalpha", "a1", CT2CA(floatToString(m_param->GetYalphaA1())));
+	m_iniFile->WriteString("yalpha", "a2", CT2CA(floatToString(m_param->GetYalphaA2())));
+	m_iniFile->WriteString("yalpha", "b0", CT2CA(floatToString(m_param->GetYalphaB0())));
+	m_iniFile->WriteString("yalpha", "b1", CT2CA(floatToString(m_param->GetYalphaB1())));
+	m_iniFile->WriteString("yalpha", "b2", CT2CA(floatToString(m_param->GetYalphaB2())));
+
+	//R
+	if(m_param->GetRType() == PID)
+	{
+		m_iniFile->WriteString("r", "mode", "PID");
+	}
+
+	else
+	{
+		m_iniFile->WriteString("r", "mode", "TF");
+	}
+
+	m_iniFile->WriteString("r", "kp", CT2CA(floatToString(m_param->GetR_Kp())));
+	m_iniFile->WriteString("r", "kd", CT2CA(floatToString(m_param->GetR_Kd())));
+	m_iniFile->WriteString("r", "ki", CT2CA(floatToString(m_param->GetR_Ki())));
+	m_iniFile->WriteString("r", "a0", CT2CA(floatToString(m_param->GetR_A0())));
+	m_iniFile->WriteString("r", "a1", CT2CA(floatToString(m_param->GetR_A1())));
+	m_iniFile->WriteString("r", "a2", CT2CA(floatToString(m_param->GetR_A2())));
+	m_iniFile->WriteString("r", "b0", CT2CA(floatToString(m_param->GetR_B0())));
+	m_iniFile->WriteString("r", "b1", CT2CA(floatToString(m_param->GetR_B1())));
+	m_iniFile->WriteString("r", "b2", CT2CA(floatToString(m_param->GetR_B2())));
+
+	//Trajectoire
+	m_iniFile->WriteString("trajectoire", "mode", CT2CA(floatToString(m_param->GetTrajMode())));
+	m_iniFile->WriteString("trajectoire", "path", CT2CA(m_param->GetTrajPath()));
+}
+
+bool CInterface_Control_Grue_Dlg::INIExists()
+{
+	return true;
+}
+
+void CInterface_Control_Grue_Dlg::OnBnClickedButtonSauvegarder()
+{
+	SaveINI();
+}
+
+CString CInterface_Control_Grue_Dlg::floatToString(float f)
+{
+	m_strTmp.Format(_T("%f"), f);
+	return m_strTmp;
+}
+
+float CInterface_Control_Grue_Dlg::CharToFloat(char* c)
+{
+	m_strTmp = c;
+	return _wtof(m_strTmp);
+}
+
+void CInterface_Control_Grue_Dlg::ShowAllParam()
+{
+	GetDlgItem(IDC_EDIT_XBETA_PARAM1)->SetWindowTextW(floatToString(m_param->GetKb()));
+
+	if(m_param->GetXbetaType() == PID)
+	{
+		m_comboXbeta.SetCurSel(0);
+		Xbeta_PID_Visible(true);
+
+		GetDlgItem(IDC_EDIT_XBETA_PARAM2)->SetWindowTextW(floatToString(m_param->GetXbetaKp()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM3)->SetWindowTextW(floatToString(m_param->GetXbetaKd()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM4)->SetWindowTextW(floatToString(m_param->GetXbetaKi()));
+	}
+
+	else
+	{
+		m_comboXbeta.SetCurSel(1);
+		Xbeta_PID_Visible(false);
+
+		GetDlgItem(IDC_EDIT_XBETA_PARAM2)->SetWindowTextW(floatToString(m_param->GetXbetaB0()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM3)->SetWindowTextW(floatToString(m_param->GetXbetaB1()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM4)->SetWindowTextW(floatToString(m_param->GetXbetaB2()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM5)->SetWindowTextW(floatToString(m_param->GetXbetaA0()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM6)->SetWindowTextW(floatToString(m_param->GetXbetaA1()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM7)->SetWindowTextW(floatToString(m_param->GetXbetaA2()));
+	}
+
+	GetDlgItem(IDC_EDIT_YALPHA_PARAM1)->SetWindowTextW(floatToString(m_param->GetKa()));
+
+	if(m_param->GetYalphaType() == PID)
+	{
+		m_comboYalpha.SetCurSel(0);
+		Yalpha_PID_Visible(true);
+
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM2)->SetWindowTextW(floatToString(m_param->GetYalphaKp()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM3)->SetWindowTextW(floatToString(m_param->GetYalphaKd()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM4)->SetWindowTextW(floatToString(m_param->GetYalphaKi()));
+	}
+
+	else
+	{
+		m_comboYalpha.SetCurSel(1);
+		Yalpha_PID_Visible(false);
+
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM2)->SetWindowTextW(floatToString(m_param->GetYalphaB0()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM3)->SetWindowTextW(floatToString(m_param->GetYalphaB1()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM4)->SetWindowTextW(floatToString(m_param->GetYalphaB2()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM5)->SetWindowTextW(floatToString(m_param->GetYalphaA0()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM6)->SetWindowTextW(floatToString(m_param->GetYalphaA1()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM7)->SetWindowTextW(floatToString(m_param->GetYalphaA2()));
+	}
+
+	if(m_param->GetRType() == PID)
+	{
+		m_comboR.SetCurSel(0);
+		R_PID_Visible(true);
+
+		GetDlgItem(IDC_EDIT_R_PARAM2)->SetWindowTextW(floatToString(m_param->GetR_Kp()));
+		GetDlgItem(IDC_EDIT_R_PARAM3)->SetWindowTextW(floatToString(m_param->GetR_Kd()));
+		GetDlgItem(IDC_EDIT_R_PARAM4)->SetWindowTextW(floatToString(m_param->GetR_Ki()));
+	}
+
+	else
+	{
+		m_comboR.SetCurSel(1);
+		R_PID_Visible(false);
+
+		GetDlgItem(IDC_EDIT_R_PARAM2)->SetWindowTextW(floatToString(m_param->GetR_B0()));
+		GetDlgItem(IDC_EDIT_R_PARAM3)->SetWindowTextW(floatToString(m_param->GetR_B1()));
+		GetDlgItem(IDC_EDIT_R_PARAM4)->SetWindowTextW(floatToString(m_param->GetR_B2()));
+		GetDlgItem(IDC_EDIT_R_PARAM5)->SetWindowTextW(floatToString(m_param->GetR_A0()));
+		GetDlgItem(IDC_EDIT_R_PARAM6)->SetWindowTextW(floatToString(m_param->GetR_A1()));
+		GetDlgItem(IDC_EDIT_R_PARAM7)->SetWindowTextW(floatToString(m_param->GetR_A2()));
+	}
+	
+	if(m_param->GetTrajMode() == 0)
+	{
+		m_comboTraj.SetCurSel(0);
+	}
+
+	else if(m_param->GetTrajMode() == 1)
+	{
+		m_comboTraj.SetCurSel(1);
+	}
+
+	else if(m_param->GetTrajMode() == 2)
+	{
+		m_comboTraj.SetCurSel(2);
+	}
+
+	GetDlgItem(IDC_EDIT_TRAJ_PATH)->SetWindowTextW(m_param->GetTrajPath());
+}
+
+void CInterface_Control_Grue_Dlg::ShowXbetaParam()
+{
+	if(m_param->GetXbetaType() == PID)
+	{
+		m_comboXbeta.SetCurSel(0);
+		Xbeta_PID_Visible(true);
+
+		GetDlgItem(IDC_EDIT_XBETA_PARAM2)->SetWindowTextW(floatToString(m_param->GetXbetaKp()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM3)->SetWindowTextW(floatToString(m_param->GetXbetaKd()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM4)->SetWindowTextW(floatToString(m_param->GetXbetaKi()));
+	}
+
+	else
+	{
+		m_comboXbeta.SetCurSel(1);
+		Xbeta_PID_Visible(false);
+
+		GetDlgItem(IDC_EDIT_XBETA_PARAM2)->SetWindowTextW(floatToString(m_param->GetXbetaB0()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM3)->SetWindowTextW(floatToString(m_param->GetXbetaB1()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM4)->SetWindowTextW(floatToString(m_param->GetXbetaB2()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM5)->SetWindowTextW(floatToString(m_param->GetXbetaA0()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM6)->SetWindowTextW(floatToString(m_param->GetXbetaA1()));
+		GetDlgItem(IDC_EDIT_XBETA_PARAM7)->SetWindowTextW(floatToString(m_param->GetXbetaA2()));
+	}
+}
+
+void CInterface_Control_Grue_Dlg::ShowYalphaParam()
+{
+	if(m_param->GetYalphaType() == PID)
+	{
+		m_comboYalpha.SetCurSel(0);
+		Yalpha_PID_Visible(true);
+
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM2)->SetWindowTextW(floatToString(m_param->GetYalphaKp()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM3)->SetWindowTextW(floatToString(m_param->GetYalphaKd()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM4)->SetWindowTextW(floatToString(m_param->GetYalphaKi()));
+	}
+
+	else
+	{
+		m_comboYalpha.SetCurSel(1);
+		Yalpha_PID_Visible(false);
+
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM2)->SetWindowTextW(floatToString(m_param->GetYalphaB0()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM3)->SetWindowTextW(floatToString(m_param->GetYalphaB1()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM4)->SetWindowTextW(floatToString(m_param->GetYalphaB2()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM5)->SetWindowTextW(floatToString(m_param->GetYalphaA0()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM6)->SetWindowTextW(floatToString(m_param->GetYalphaA1()));
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM7)->SetWindowTextW(floatToString(m_param->GetYalphaA2()));
+	}
+}
+
+void CInterface_Control_Grue_Dlg::ShowR_Param()
+{
+	if(m_param->GetRType() == PID)
+	{
+		m_comboR.SetCurSel(0);
+		R_PID_Visible(true);
+
+		GetDlgItem(IDC_EDIT_R_PARAM2)->SetWindowTextW(floatToString(m_param->GetR_Kp()));
+		GetDlgItem(IDC_EDIT_R_PARAM3)->SetWindowTextW(floatToString(m_param->GetR_Kd()));
+		GetDlgItem(IDC_EDIT_R_PARAM4)->SetWindowTextW(floatToString(m_param->GetR_Ki()));
+	}
+
+	else
+	{
+		m_comboR.SetCurSel(1);
+		R_PID_Visible(false);
+
+		GetDlgItem(IDC_EDIT_R_PARAM2)->SetWindowTextW(floatToString(m_param->GetR_B0()));
+		GetDlgItem(IDC_EDIT_R_PARAM3)->SetWindowTextW(floatToString(m_param->GetR_B1()));
+		GetDlgItem(IDC_EDIT_R_PARAM4)->SetWindowTextW(floatToString(m_param->GetR_B2()));
+		GetDlgItem(IDC_EDIT_R_PARAM5)->SetWindowTextW(floatToString(m_param->GetR_A0()));
+		GetDlgItem(IDC_EDIT_R_PARAM6)->SetWindowTextW(floatToString(m_param->GetR_A1()));
+		GetDlgItem(IDC_EDIT_R_PARAM7)->SetWindowTextW(floatToString(m_param->GetR_A2()));
+	}
+}
+
+void CInterface_Control_Grue_Dlg::Comp_Disabled(bool disabled)
+{
+	if(disabled)
+	{
+		m_comboXbeta.EnableWindow(false);
+		m_comboYalpha.EnableWindow(false);
+		m_comboR.EnableWindow(false);
+
+		GetDlgItem(IDC_STATIC_XBETA)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_YALPHA)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_R)->EnableWindow(false);
+
+		GetDlgItem(IDC_STATIC_XBETA_PARAM1)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_XBETA_PARAM2)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_XBETA_PARAM3)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_XBETA_PARAM4)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_XBETA_PARAM5)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_XBETA_PARAM6)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_XBETA_PARAM7)->EnableWindow(false);
+
+		GetDlgItem(IDC_EDIT_XBETA_PARAM1)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_XBETA_PARAM2)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_XBETA_PARAM3)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_XBETA_PARAM4)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_XBETA_PARAM5)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_XBETA_PARAM6)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_XBETA_PARAM7)->EnableWindow(false);
+
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM1)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM2)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM3)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM4)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM5)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM6)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM7)->EnableWindow(false);
+
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM1)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM2)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM3)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM4)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM5)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM6)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM7)->EnableWindow(false);
+
+		GetDlgItem(IDC_STATIC_R_PARAM1)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_R_PARAM2)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_R_PARAM3)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_R_PARAM4)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_R_PARAM5)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_R_PARAM6)->EnableWindow(false);
+		GetDlgItem(IDC_STATIC_R_PARAM7)->EnableWindow(false);
+
+		GetDlgItem(IDC_EDIT_R_PARAM1)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_R_PARAM2)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_R_PARAM3)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_R_PARAM4)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_R_PARAM5)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_R_PARAM6)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_R_PARAM7)->EnableWindow(false);
+	}
+
+	else if(!disabled)
+	{
+		m_comboXbeta.EnableWindow(true);
+		m_comboYalpha.EnableWindow(true);
+		m_comboR.EnableWindow(true);
+
+		GetDlgItem(IDC_STATIC_XBETA)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_YALPHA)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_R)->EnableWindow(true);
+
+		GetDlgItem(IDC_STATIC_XBETA_PARAM1)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_XBETA_PARAM2)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_XBETA_PARAM3)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_XBETA_PARAM4)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_XBETA_PARAM5)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_XBETA_PARAM6)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_XBETA_PARAM7)->EnableWindow(true);
+
+		GetDlgItem(IDC_EDIT_XBETA_PARAM1)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_XBETA_PARAM2)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_XBETA_PARAM3)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_XBETA_PARAM4)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_XBETA_PARAM5)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_XBETA_PARAM6)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_XBETA_PARAM7)->EnableWindow(true);
+
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM1)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM2)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM3)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM4)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM5)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM6)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_YALPHA_PARAM7)->EnableWindow(true);
+
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM1)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM2)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM3)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM4)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM5)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM6)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_YALPHA_PARAM7)->EnableWindow(true);
+
+		GetDlgItem(IDC_STATIC_R_PARAM1)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_R_PARAM2)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_R_PARAM3)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_R_PARAM4)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_R_PARAM5)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_R_PARAM6)->EnableWindow(true);
+		GetDlgItem(IDC_STATIC_R_PARAM7)->EnableWindow(true);
+
+		GetDlgItem(IDC_EDIT_R_PARAM1)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_R_PARAM2)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_R_PARAM3)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_R_PARAM4)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_R_PARAM5)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_R_PARAM6)->EnableWindow(true);
+		GetDlgItem(IDC_EDIT_R_PARAM7)->EnableWindow(true);
+	}
+}
+
+LRESULT CInterface_Control_Grue_Dlg::OnCraneWaitDone(WPARAM wParam, LPARAM lParam)
+{
+	m_param->SetCraneWait(false);
+
+	if(m_param->GetAffInterf())
+	{
+
+	}
+	return 0;
+}
+
+void CInterface_Control_Grue_Dlg::OnBnClickedButtonRestaurer()
+{
+	LoadINI();
 }
